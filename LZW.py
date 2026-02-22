@@ -20,13 +20,20 @@ class LZWCoding:
    # ---------------------------------------------------------------------------
    def compress_text_file(self):
       # get the current directory where this program is placed
-      current_directory = os.path.dirname(os.path.realpath(__file__))
-      # build the path of the input file
-      input_file = self.filename + '.txt'
-      input_path = current_directory + '/' + input_file
-      # build the path of the output file
-      output_file = self.filename + '_compressed.bin'
-      output_path = current_directory + '/' + output_file
+      if os.path.isabs(self.filename) or os.sep in self.filename or '/' in self.filename:
+         # Full path given (e.g. from GUI file dialog)
+         input_path = self.filename
+         base = os.path.splitext(self.filename)[0]   # strip extension if any
+         input_file = os.path.basename(input_path)
+         output_file = os.path.basename(base) + '_compressed.bin'
+         output_path = base + '_compressed.bin'
+      else:
+         # Plain filename given (e.g. from __main__ block)
+         current_directory = os.path.dirname(os.path.realpath(__file__))
+         input_file = self.filename + '.txt'
+         input_path = os.path.join(current_directory, input_file)
+         output_file = self.filename + '_compressed.bin'
+         output_path = os.path.join(current_directory, output_file)
 
       # read the contents of the input file
       in_file = open(input_path, 'r')
@@ -91,8 +98,8 @@ class LZWCoding:
             dict_size += 1
             # reset w to the current character
             w = k
-      # add the code for the remaining sequence to the list 
-      # that stores the encoded values (integer codes)
+      # add the code for the remaining sequence (if it exists) to the list that 
+      # stores the encoded values (integer codes)
       if w:
          result.append(dictionary[w])
       
@@ -103,65 +110,23 @@ class LZWCoding:
 
       # return the encoded values (a list of integer dictionary values)
       return result
-   def lzw_trace(self, input_string):
-    dict_size = 256
-    dictionary = {chr(i): i for i in range(dict_size)}
-
-    w = ""
-    steps = []
-
-    for k in input_string:
-        wk = w + k
-        if wk in dictionary:
-            # Output boş çünkü henüz çıktı yok
-            steps.append([w if w else "NIL", k, "", "", ""])
-            w = wk
-        else:
-            output_code = dictionary[w] if w else None
-            output_symbol = dictionary_inv = {v: k for k, v in dictionary.items()}
-            # output_code'yu karakter dizisi olarak al
-            output_str = output_symbol[output_code] if output_code is not None else ""
-
-            dictionary[wk] = dict_size
-
-            steps.append([
-                w if w else "NIL",
-                k,
-                output_str,    # integer yerine karakter/dizi olarak
-                dict_size,
-                wk
-            ])
-
-            dict_size += 1
-            w = k
-
-    if w:
-        output_code = dictionary[w]
-        output_symbol = {v: k for k, v in dictionary.items()}
-        output_str = output_symbol[output_code]
-        steps.append([w, "EOF", output_str, "", ""])
-
-    return steps
-
-
 
    # A method that converts the integer list returned by the compress method
    # into a binary string and returns the resulting string.
    # ---------------------------------------------------------------------------
    def int_list_to_binary_string(self, int_list):
-      # create a list to store the bits of the binary string 
-      # (using a list is more efficient than repeatedly concatenating strings)
-      bits = []
-      # for each integer in the input list
+      # initialize the binary string as an empty string
+      bitstring = ''
+      # concatenate each integer in the input list to the binary string
       for num in int_list:
-         # convert each integer code to its codelength-bit binary representation
+         # using codelength bits to compress each integer code in the input list
          for n in range(self.codelength):
             if num & (1 << (self.codelength - 1 - n)):
-               bits.append('1')
+               bitstring += '1'
             else:
-               bits.append('0')
-      # return the result as a string
-      return ''.join(bits)
+               bitstring += '0'
+      # return the resulting binary string
+      return bitstring
 
    # A method that adds the code length to the beginning of the binary string
    # that corresponds to the compressed data and returns the resulting string.
@@ -207,7 +172,7 @@ class LZWCoding:
          exit(0)
       # create a byte array
       b = bytearray()
-      # append the padded binary string byte by byte
+      # append the padded binary string to byte by byte
       for i in range(0, len(padded_encoded_data), 8):
          byte = padded_encoded_data[i : i + 8]
          b.append(int(byte, 2))
@@ -219,13 +184,20 @@ class LZWCoding:
    # ---------------------------------------------------------------------------
    def decompress_text_file(self):
       # get the current directory where this program is placed
-      current_directory = os.path.dirname(os.path.realpath(__file__))
-      # build the path of the input file
-      input_file = self.filename + '_compressed.bin'
-      input_path = current_directory + '/' + input_file
-      # build the path of the output file
-      output_file = self.filename + '_decompressed.txt'
-      output_path = current_directory + '/' + output_file
+      if os.path.isabs(self.filename) or os.sep in self.filename or '/' in self.filename:
+         # Full path given (e.g. from GUI file dialog)
+         base = os.path.splitext(self.filename)[0]   # strip extension if any
+         input_file = os.path.basename(base) + '_compressed.bin'
+         input_path = base + '_compressed.bin'
+         output_file = os.path.basename(base) + '_decompressed.txt'
+         output_path = base + '_decompressed.txt'
+      else:
+         # Plain filename given (e.g. from __main__ block)
+         current_directory = os.path.dirname(os.path.realpath(__file__))
+         input_file = self.filename + '_compressed.bin'
+         input_path = os.path.join(current_directory, input_file)
+         output_file = self.filename + '_decompressed.txt'
+         output_path = os.path.join(current_directory, output_file)
 
       # read the contents of the input file
       in_file = open(input_path, 'rb')   # binary mode
@@ -257,6 +229,20 @@ class LZWCoding:
       # notify the user that the decompression process is finished
       print(input_file + ' is decompressed into ' + output_file + '.')
       
+      # PDF İsteri: CR, CF ve SS Metriklerinin Hesaplanması
+      size_of_compressed = os.path.getsize(input_path)
+      size_of_original = os.path.getsize(output_path)
+      
+      if size_of_original > 0 and size_of_compressed > 0:
+          CR = size_of_compressed / size_of_original
+          CF = size_of_original / size_of_compressed
+          SS = (size_of_original - size_of_compressed) / size_of_original
+          
+          print('\n--- Decompression Metrics ---')
+          print('Compression Ratio (CR): {:.4f}'.format(CR))
+          print('Compression Factor (CF): {:.4f}'.format(CF))
+          print('Space Saving (SS): {:.2f}%'.format(SS * 100))
+      
       # return the path of the output file
       return output_path
 
@@ -276,7 +262,7 @@ class LZWCoding:
    # and return the resulting string.
    # ---------------------------------------------------------------------------
    def extract_code_length_info(self, bitstring):
-      # the first 8 bits of the input string contain the code length info
+      # the first 8 bits of the input string contains the code length info
       codelength_info = bitstring[:8]
       self.codelength = int(codelength_info, 2)
       # return the resulting binary string after removing the code length info
@@ -338,10 +324,20 @@ class LZWCoding:
       
       # return the resulting output (the decompressed string/text)
       return result.getvalue()
-if __name__ == "__main__":
-    coder = LZWCoding("dummy", "text")
-    trace = coder.lzw_trace("^WED^WE^WEE^WEB^WET")
 
-    print("W\tK\tOutput\tIndex\tSymbol")
-    for row in trace:
-        print("\t".join(str(x) for x in row))
+if __name__ == "__main__":
+    # Dosya adını buraya yaz (uzantısız)
+    file_to_test = "short_text" 
+    
+    # Sınıfı başlat
+    lzw = LZWCoding(file_to_test, "text")
+    
+    # 1. Sıkıştır
+    print("Sıkıştırma başlıyor...")
+    lzw.compress_text_file()
+    
+    # 2. Geri Aç
+    print("\nGeri açma başlıyor...")
+    lzw.decompress_text_file()
+    
+    print("\nİşlem başarıyla tamamlandı.")
