@@ -103,6 +103,47 @@ class LZWCoding:
 
       # return the encoded values (a list of integer dictionary values)
       return result
+   def lzw_trace(self, input_string):
+    dict_size = 256
+    dictionary = {chr(i): i for i in range(dict_size)}
+
+    w = ""
+    steps = []
+
+    for k in input_string:
+        wk = w + k
+        if wk in dictionary:
+            # Output boş çünkü henüz çıktı yok
+            steps.append([w if w else "NIL", k, "", "", ""])
+            w = wk
+        else:
+            output_code = dictionary[w] if w else None
+            output_symbol = dictionary_inv = {v: k for k, v in dictionary.items()}
+            # output_code'yu karakter dizisi olarak al
+            output_str = output_symbol[output_code] if output_code is not None else ""
+
+            dictionary[wk] = dict_size
+
+            steps.append([
+                w if w else "NIL",
+                k,
+                output_str,    # integer yerine karakter/dizi olarak
+                dict_size,
+                wk
+            ])
+
+            dict_size += 1
+            w = k
+
+    if w:
+        output_code = dictionary[w]
+        output_symbol = {v: k for k, v in dictionary.items()}
+        output_str = output_symbol[output_code]
+        steps.append([w, "EOF", output_str, "", ""])
+
+    return steps
+
+
 
    # A method that converts the integer list returned by the compress method
    # into a binary string and returns the resulting string.
@@ -297,3 +338,10 @@ class LZWCoding:
       
       # return the resulting output (the decompressed string/text)
       return result.getvalue()
+if __name__ == "__main__":
+    coder = LZWCoding("dummy", "text")
+    trace = coder.lzw_trace("^WED^WE^WEE^WEB^WET")
+
+    print("W\tK\tOutput\tIndex\tSymbol")
+    for row in trace:
+        print("\t".join(str(x) for x in row))
