@@ -18,7 +18,7 @@ decompressed_file = filename + '_decompressed.txt'
 decompressed_path = current_directory + '/' + decompressed_file
 # read the contents of both files
 with open(original_path, 'r') as file1, open(decompressed_path, 'r') as file2:
-   original_text = file1.read()
+   original_text = file1.read().rstrip()
    decompressed_text = file2.read()
 # compare the file contents and print the result
 if original_text == decompressed_text:
